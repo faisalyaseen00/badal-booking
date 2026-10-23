@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<FirebaseIdentity> FirebaseIdentities => Set<FirebaseIdentity>();
+    public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -63,6 +64,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             identity.HasIndex(x => x.FirebaseUid).IsUnique();
             identity.HasIndex(x => x.UserId).IsUnique();
             identity.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        model.Entity<DeviceToken>(device =>
+        {
+            device.Property(x => x.Token).HasMaxLength(DeviceToken.TokenMaxLength);
+            device.Property(x => x.Platform).HasMaxLength(20);
+            device.HasIndex(x => x.Token).IsUnique();   // one owner per device token
+            device.HasIndex(x => x.UserId);              // "all devices of this customer" for pushes
+            device.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            device.ToTable(t => t.HasCheckConstraint("ck_device_tokens_platform_valid", "platform IN ('web', 'android', 'ios')"));
         });
 
         model.Entity<Payment>(payment =>

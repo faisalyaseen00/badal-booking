@@ -64,10 +64,13 @@
     <h2>3. Push notifications</h2>
     <div class="row">
       <button id="enablePush" disabled>Allow notifications &amp; get device token</button>
+      <button id="registerDevice" disabled>Register device (POST /devices)</button>
+      <button id="logout" disabled>Log out (POST /auth/logout)</button>
     </div>
     <dl class="status">
       <dt>Permission</dt><dd id="pushPermission">–</dd>
       <dt>Device token</dt><dd id="pushToken">–</dd>
+      <dt>Registered</dt><dd id="deviceRegistered">–</dd>
     </dl>
     <h2 style="margin-top:14px">Received</h2>
     <ul id="notifications"></ul>

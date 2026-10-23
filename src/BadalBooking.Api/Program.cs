@@ -4,6 +4,7 @@ using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Features.Bookings;
+using BadalBooking.Api.Features.Devices;
 using BadalBooking.Api.Features.Payments;
 using BadalBooking.Api.Features.Performers;
 using BadalBooking.Api.Infrastructure.Payments;
@@ -148,6 +149,7 @@ app.MapAuthEndpoints();
 app.MapBookingEndpoints();
 app.MapPaymentEndpoints();
 app.MapPerformerEndpoints();
+app.MapDeviceEndpoints();
 
 // Create the demo performer account if it doesn't exist yet (performers can't self-register).
 await PerformerSeeder.SeedAsync(app.Services);

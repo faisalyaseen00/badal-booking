@@ -102,6 +102,53 @@ namespace BadalBooking.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BadalBooking.Api.Domain.DeviceToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("platform");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_device_tokens");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_device_tokens_token");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_device_tokens_user_id");
+
+                    b.ToTable("device_tokens", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_device_tokens_platform_valid", "platform IN ('web', 'android', 'ios')");
+                        });
+                });
+
             modelBuilder.Entity("BadalBooking.Api.Domain.FirebaseIdentity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -277,6 +324,16 @@ namespace BadalBooking.Api.Data.Migrations
                         .HasForeignKey("PerformerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_bookings_users_performer_id");
+                });
+
+            modelBuilder.Entity("BadalBooking.Api.Domain.DeviceToken", b =>
+                {
+                    b.HasOne("BadalBooking.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_device_tokens_users_user_id");
                 });
 
             modelBuilder.Entity("BadalBooking.Api.Domain.FirebaseIdentity", b =>

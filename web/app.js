@@ -88,6 +88,8 @@ function render(user) {
   $("signOut").disabled = !user;
   $("exchange").disabled = !user;
   $("enablePush").disabled = !state.apiToken;
+  $("registerDevice").disabled = !state.apiToken || !state.deviceToken;
+  $("logout").disabled = !state.apiToken;
   set("apiUser", state.apiUser ? `${state.apiUser.email} (${state.apiUser.role})` : "–", state.apiUser ? "ok" : "");
 }
 
@@ -115,10 +117,33 @@ $("enablePush").onclick = () => run("Push setup", async () => {
     ...(config.vapidKey ? { vapidKey: config.vapidKey } : {}),
   });
   set("pushToken", mask(state.deviceToken), "ok");
-  log("Got an FCM device token. (Registering it with the API comes in step 2.4.)", "ok");
+  render(auth.currentUser);
+  log("Got an FCM device token. Next: Register device.", "ok");
 
   // Messages that arrive while this tab is open and focused.
   onMessage(messaging, (payload) => showNotification(payload));
+});
+
+// Save this device's token for the signed-in user, so the API can push to it.
+$("registerDevice").onclick = () => run("POST /devices", async () => {
+  const device = await callApi("/devices", {
+    method: "POST",
+    body: JSON.stringify({ token: state.deviceToken, platform: "web" }),
+  });
+  state.deviceId = device.id;
+  set("deviceRegistered", `yes (id ${device.id})`, "ok");
+  log("Device registered with the API.", "ok");
+});
+
+// Log out: first tell the API to forget this device's token (no more pushes here),
+// then drop the API JWT and sign out of Firebase.
+$("logout").onclick = () => run("Log out", async () => {
+  await callApi("/auth/logout", { method: "POST", body: JSON.stringify({ deviceToken: state.deviceToken }) });
+  state.apiToken = null; state.apiUser = null; state.deviceId = null;
+  set("deviceRegistered", "no (removed on logout)");
+  await signOut(auth);
+  render(null);
+  log("Logged out: device token removed from the API, API token discarded, signed out of Firebase.", "ok");
 });
 
 function showNotification(payload) {
