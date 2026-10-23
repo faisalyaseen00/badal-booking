@@ -1,6 +1,14 @@
+using System.Threading.RateLimiting;
 using BadalBooking.Api.Data;
+using BadalBooking.Api.Domain;
+using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Infrastructure;
+using BadalBooking.Api.Infrastructure.Auth;
+using BadalBooking.Api.Infrastructure.Hosting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +20,12 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddEnvironmentVariables(); // re-read so the .env values are visible
 }
 
+// ---------- Hosting: Render (backend) + Vercel (frontend) ----------
+builder.UsePlatformPort();          // listen on Render's PORT
+builder.AddPlatformProxySupport();  // real client IP behind Render's proxy
+builder.AddStrictCors();            // only the exact Vercel/localhost origins may call from a browser
+
+// ---------- Database ----------
 // Comes from .env locally, and from the ConnectionStrings__Default
 // environment variable in production (Render). Never from a committed file.
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -23,11 +37,77 @@ builder.Services.AddDbContext<AppDbContext>(options => options
         npgsql.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema))
     .UseSnakeCaseNamingConvention()); // PascalCase C# names -> snake_case SQL names (no quoting needed)
 
+// ---------- Core services ----------
+// Injected clock instead of DateTime.UtcNow, so tests can move time (needed for the 30-minute expiry).
+builder.Services.AddSingleton(TimeProvider.System);
+// ASP.NET Core's built-in hasher: PBKDF2 with a random salt per password.
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+// Consistent RFC 7807 JSON error bodies for 400/401/403/404/409/429/500.
+builder.Services.AddProblemDetails();
+
+// ---------- Authentication: the API's own JWT ----------
+var jwt = JwtOptions.LoadAndValidate(builder.Configuration); // stops startup if Jwt__Key is missing/weak
+builder.Services.AddSingleton(jwt);
+builder.Services.AddSingleton<JwtTokenService>();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false; // keep "sub" and "role" exactly as issued
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(jwt.KeyBytes),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256], // reject "alg: none" and algorithm swaps
+            ValidateLifetime = true,
+            RequireExpirationTime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = AuthClaims.UserId,
+            RoleClaimType = AuthClaims.Role,
+        };
+    });
+
+// Role checks used by the booking endpoints (step 1.4 onwards).
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthClaims.CustomerPolicy, p => p.RequireRole(nameof(UserRole.Customer)))
+    .AddPolicy(AuthClaims.PerformerPolicy, p => p.RequireRole(nameof(UserRole.Performer)));
+
+// ---------- Rate limiting for login/register (brute-force protection) ----------
+var authPermitsPerMinute = builder.Configuration.GetValue("RateLimits:AuthPerMinute", 10);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthEndpoints.RateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: http.Connection.RemoteIpAddress?.ToString() ?? "unknown", // per client IP
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = authPermitsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
+});
+
 var app = builder.Build();
 
+// ---------- HTTP pipeline (order matters) ----------
+app.UsePlatformProxySupport(); // FIRST: fix client IP/scheme before anything reads them
+app.UseExceptionHandler();   // unhandled errors -> generic 500 ProblemDetails, no stack trace to clients
+app.UseStatusCodePages();    // empty 401/403/404 -> ProblemDetails body
+app.UseCors(HostingSetup.CorsPolicy); // before auth, so browser preflight (OPTIONS) gets CORS headers
+app.UseAuthentication();     // reads and validates the Bearer token
+app.UseAuthorization();      // applies RequireAuthorization / policies
+app.UseRateLimiter();
+
+// ---------- Endpoints ----------
 // Simple liveness check: proves the API process is up.
 // (The real /health endpoint that also checks the database comes in step 3.1.)
 app.MapGet("/ping", () => Results.Ok(new { status = "ok" }));
+app.MapAuthEndpoints();
 
 app.Run();
 

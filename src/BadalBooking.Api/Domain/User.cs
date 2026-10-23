@@ -18,6 +18,12 @@ public class User
 
     public DateTime CreatedAtUtc { get; private set; }
 
+    // Single rule for comparing emails everywhere (register, login, Firebase linking).
+    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    // The hash is computed by the auth layer (ASP.NET Core PasswordHasher). The plain password is never stored.
+    public void SetPasswordHash(string passwordHash) => PasswordHash = passwordHash;
+
     public static User CreateCustomer(string email, DateTime nowUtc) => Create(email, UserRole.Customer, nowUtc);
 
     // Only used by the server-side seed (step 1.6). There is no public way to become a Performer.
@@ -26,7 +32,7 @@ public class User
     private static User Create(string email, UserRole role, DateTime nowUtc) => new()
     {
         Id = Guid.CreateVersion7(),
-        Email = email.Trim().ToLowerInvariant(),
+        Email = NormalizeEmail(email),
         Role = role,
         CreatedAtUtc = nowUtc,
     };
