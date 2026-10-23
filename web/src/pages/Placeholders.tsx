@@ -1,17 +1,6 @@
 import { Link } from "react-router";
-import { useAuth } from "../auth/AuthContext";
 
 // Screens filled in by later steps. Kept tiny so step 2.7 is only the foundation.
-export function CustomerHome() {
-  const { session } = useAuth();
-  return (
-    <div className="card">
-      <h1>My bookings</h1>
-      <p className="muted">Signed in as {session?.user.email}. Booking screens arrive in step 2.8.</p>
-    </div>
-  );
-}
-
 export function PerformerHome() {
   return (
     <div className="card">

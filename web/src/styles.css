@@ -65,3 +65,37 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-colo
 .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); white-space: nowrap; }
 .badge-customer { background: var(--accent-soft); color: var(--accent); }
 .badge-performer { background: var(--warn-soft); color: var(--warn); }
+
+/* ---------- step 2.8: customer screens ---------- */
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+.grow { flex: 1; min-width: 220px; } .row.grow { align-items: flex-end; }
+.new-booking h2 { margin-bottom: 8px; }
+.banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--accent-soft); border-color: transparent; }
+.empty { text-align: center; color: var(--muted); }
+.booking-list { list-style: none; padding: 0; margin: 0; }
+.booking { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; padding: 16px 18px; }
+.booking-name { font-weight: 600; color: var(--text); text-decoration: none; font-size: 16px; }
+.booking-name:hover { color: var(--accent); }
+.booking-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 6px; }
+.booking-side { display: flex; align-items: center; gap: 14px; }
+.price { font-weight: 650; white-space: nowrap; } .price.big { font-size: 22px; }
+.status { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.status-PendingPayment { background: var(--warn-soft); color: var(--warn); }
+.status-Paid { background: var(--accent-soft); color: var(--accent); }
+.status-Accepted { background: var(--ok-soft); color: var(--ok); }
+.status-Cancelled, .status-Expired { background: var(--bg); color: var(--muted); }
+.countdown { font-size: 13px; color: var(--warn); font-variant-numeric: tabular-nums; } .countdown.late { color: var(--bad); }
+.back { display: inline-block; margin-bottom: 12px; text-decoration: none; }
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.detail-head h1 { margin-bottom: 8px; }
+.timeline { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; }
+.timeline li { position: relative; padding-left: 28px; color: var(--muted); }
+.timeline li::before { content: ""; position: absolute; left: 4px; top: 5px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
+.timeline li.done { color: var(--text); } .timeline li.done::before { background: var(--ok); border-color: var(--ok); }
+.timeline li.ended { color: var(--bad); } .timeline li.ended::before { background: var(--bad); border-color: var(--bad); }
+.facts { display: grid; grid-template-columns: 120px 1fr; gap: 6px 14px; margin: 0 0 18px; font-size: 14px; }
+.facts dt { color: var(--muted); } .facts dd { margin: 0; overflow-wrap: anywhere; }
+.mono { font-family: ui-monospace, monospace; font-size: 13px; }
+.toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 50; max-width: min(360px, calc(100vw - 32px)); }
+.toast { display: grid; gap: 2px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.12); font-size: 14px; }
+.toast-ok { border-left: 4px solid var(--ok); } .toast-error { border-left: 4px solid var(--bad); } .toast-info { border-left: 4px solid var(--accent); }

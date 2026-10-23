@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification,
   signInWithEmailAndPassword, signOut, type User as FirebaseUser,
@@ -48,7 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [beforeLogout, setBeforeLogoutFn] = useState<(() => Promise<void>) | null>(null);
+  // A ref, not state: changing it must NOT re-render the app. (Storing it as state caused an
+  // infinite render loop, found in the step 2.8 browser check.)
+  const beforeLogout = useRef<(() => Promise<void>) | null>(null);
+  const setBeforeLogout = useCallback((fn: (() => Promise<void>) | null) => { beforeLogout.current = fn; }, []);
 
   const exchange = useCallback(async (user: FirebaseUser, forceRefresh = false) => {
     const idToken = await user.getIdToken(forceRefresh);
@@ -117,14 +120,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async logout() {
-      try { await beforeLogout?.(); } catch { /* still log out locally */ }
+      try { await beforeLogout.current?.(); } catch { /* still log out locally */ }
       sessionStorage.removeItem(STORAGE_KEY);
       setSession(null);
       if (firebaseAuth.currentUser) await signOut(firebaseAuth);
     },
 
-    setBeforeLogout(fn) { setBeforeLogoutFn(() => fn); },
-  }), [session, loading, firebaseUser, exchange, beforeLogout]);
+    setBeforeLogout,
+  }), [session, loading, firebaseUser, exchange, setBeforeLogout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
