@@ -1,0 +1,25 @@
+# Local development database only. Production uses Supabase (step 3.2).
+# Start:  docker compose up -d db
+# Without the compose plugin, the same container can be started with:
+#   docker run -d --name badal-postgres -e POSTGRES_DB=badal -e POSTGRES_USER=postgres \
+#     -e POSTGRES_PASSWORD=postgres -p 5433:5432 -v badal-pgdata:/var/lib/postgresql/data postgres:17
+services:
+  db:
+    image: postgres:17
+    container_name: badal-postgres
+    environment:
+      POSTGRES_DB: badal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # local-only throwaway password, not a real secret
+    ports:
+      - "5433:5432" # 5433 on your machine, so it never clashes with the old project on 5432
+    volumes:
+      - badal-pgdata:/var/lib/postgresql/data # data survives container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d badal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  badal-pgdata:
