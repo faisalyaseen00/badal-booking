@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<FirebaseIdentity> FirebaseIdentities => Set<FirebaseIdentity>();
     public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -74,6 +75,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             device.HasIndex(x => x.UserId);              // "all devices of this customer" for pushes
             device.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             device.ToTable(t => t.HasCheckConstraint("ck_device_tokens_platform_valid", "platform IN ('web', 'android', 'ios')"));
+        });
+
+        model.Entity<OutboxMessage>(outbox =>
+        {
+            outbox.ToTable("notification_outbox", t =>
+                t.HasCheckConstraint("ck_outbox_type_valid", "type IN ('BookingAccepted', 'BookingExpired')"));
+            outbox.Property(x => x.Type).HasMaxLength(40);
+            outbox.Property(x => x.LastError).HasMaxLength(500);
+
+            // Each booking can be accepted once and expire once, so one event per (booking, type).
+            // If the same change were ever attempted twice, the database refuses the duplicate event.
+            outbox.HasIndex(x => new { x.BookingId, x.Type }).IsUnique();
+
+            // Fast lookup of "what still needs sending" (only unprocessed rows are indexed).
+            outbox.HasIndex(x => x.NextAttemptAtUtc)
+                .HasFilter("processed_at_utc IS NULL")
+                .HasDatabaseName("ix_outbox_pending");
+
+            outbox.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+            outbox.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         model.Entity<Payment>(payment =>

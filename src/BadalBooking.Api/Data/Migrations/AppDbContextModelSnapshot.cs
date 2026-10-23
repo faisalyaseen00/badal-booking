@@ -184,6 +184,72 @@ namespace BadalBooking.Api.Data.Migrations
                     b.ToTable("firebase_identities", "app");
                 });
 
+            modelBuilder.Entity("BadalBooking.Api.Domain.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until_utc");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at_utc");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at_utc");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_outbox");
+
+                    b.HasIndex("NextAttemptAtUtc")
+                        .HasDatabaseName("ix_outbox_pending")
+                        .HasFilter("processed_at_utc IS NULL");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notification_outbox_user_id");
+
+                    b.HasIndex("BookingId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_outbox_booking_id_type");
+
+                    b.ToTable("notification_outbox", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_outbox_type_valid", "type IN ('BookingAccepted', 'BookingExpired')");
+                        });
+                });
+
             modelBuilder.Entity("BadalBooking.Api.Domain.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -344,6 +410,23 @@ namespace BadalBooking.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_firebase_identities_users_user_id");
+                });
+
+            modelBuilder.Entity("BadalBooking.Api.Domain.OutboxMessage", b =>
+                {
+                    b.HasOne("BadalBooking.Api.Domain.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_outbox_bookings_booking_id");
+
+                    b.HasOne("BadalBooking.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_outbox_users_user_id");
                 });
 
             modelBuilder.Entity("BadalBooking.Api.Domain.Payment", b =>

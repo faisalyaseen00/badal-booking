@@ -55,14 +55,20 @@ public static class PerformerEndpoints
         var performerId = principal.GetUserId();
         var now = clock.GetUtcNow().UtcDateTime;
 
-        var accepted = await db.Bookings
-            .Where(b => b.Id == id && b.Status == BookingStatus.Paid && b.PerformerId == null)
-            .ExecuteUpdateAsync(set => set
-                .SetProperty(b => b.Status, BookingStatus.Accepted)
-                .SetProperty(b => b.PerformerId, performerId)
-                .SetProperty(b => b.UpdatedAtUtc, now), ct);
-
-        // Step 2.5 will add the "booking accepted" push notification here, in the same transaction.
+        // ONE statement: accept the booking AND queue the "booking accepted" push for its customer.
+        // Both happen or neither does. The push itself is sent later by the worker, not in this request.
+        var accepted = (await db.Database.SqlQuery<Guid>($"""
+            WITH accepted AS (
+                UPDATE app.bookings
+                   SET status = 'Accepted', performer_id = {performerId}, updated_at_utc = {now}
+                 WHERE id = {id} AND status = 'Paid' AND performer_id IS NULL
+                RETURNING id, customer_id
+            )
+            INSERT INTO app.notification_outbox (id, type, booking_id, user_id, created_at_utc, attempts, next_attempt_at_utc)
+            SELECT gen_random_uuid(), {NotificationTypes.BookingAccepted}, id, customer_id, {now}, 0, {now}
+              FROM accepted
+            RETURNING booking_id AS "Value"
+            """).ToListAsync(ct)).Count;
 
         if (accepted == 1)
             return Results.Ok(new AcceptBookingResponse(id, nameof(BookingStatus.Accepted), now));

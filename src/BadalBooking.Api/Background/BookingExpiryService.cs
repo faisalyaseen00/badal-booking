@@ -1,3 +1,4 @@
+using BadalBooking.Api.Domain;
 using BadalBooking.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,18 +38,27 @@ public sealed class BookingExpiryService(AppDbContext db, TimeProvider clock, Ex
     {
         var batchSize = options.BatchSize;
 
+        // Same statement also queues one "booking expired" push per expired booking (outbox, step 2.5):
+        // the status change and its notification are saved together or not at all.
         return await db.Database.SqlQuery<ExpiredBooking>($"""
-            UPDATE app.bookings AS b
-               SET status = 'Expired', updated_at_utc = {now}
-             WHERE b.id IN (
-                   SELECT id FROM app.bookings
-                    WHERE status = 'PendingPayment'
-                      AND payment_deadline_utc <= {now}
-                    ORDER BY payment_deadline_utc
-                    LIMIT {batchSize}
-                    FOR UPDATE SKIP LOCKED)
-               AND b.status = 'PendingPayment'
-            RETURNING b.id, b.customer_id
+            WITH expired AS (
+                UPDATE app.bookings AS b
+                   SET status = 'Expired', updated_at_utc = {now}
+                 WHERE b.id IN (
+                       SELECT id FROM app.bookings
+                        WHERE status = 'PendingPayment'
+                          AND payment_deadline_utc <= {now}
+                        ORDER BY payment_deadline_utc
+                        LIMIT {batchSize}
+                        FOR UPDATE SKIP LOCKED)
+                   AND b.status = 'PendingPayment'
+                RETURNING b.id, b.customer_id
+            ), queued AS (
+                INSERT INTO app.notification_outbox (id, type, booking_id, user_id, created_at_utc, attempts, next_attempt_at_utc)
+                SELECT gen_random_uuid(), {NotificationTypes.BookingExpired}, id, customer_id, {now}, 0, {now}
+                  FROM expired
+            )
+            SELECT id, customer_id FROM expired
             """).ToListAsync(ct);
         // Column names stay snake_case (id, customer_id): EF's naming convention maps them to
         // ExpiredBooking.Id / CustomerId. Renaming them to "Id"/"CustomerId" made EF fail to read
