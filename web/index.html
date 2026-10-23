@@ -1,98 +1,14 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Badal Booking – Test Client</title>
-  <style>
-    :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --line:#e4e7ec; --accent:#0f766e; --bad:#b42318; --ok:#067647; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0f1218; --card:#171b23; --text:#e6e8ec; --muted:#98a2b3; --line:#2a303b; --accent:#2dd4bf; --bad:#f97066; --ok:#47cd89; } }
-    * { box-sizing: border-box; }
-    body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
-    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
-    h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 0 0 12px; }
-    .sub { color: var(--muted); margin: 0 0 20px; }
-    section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
-    label { display:block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-    input { width:100%; padding: 9px 10px; border:1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; margin-bottom: 10px; }
-    .row { display:flex; flex-wrap: wrap; gap: 8px; }
-    button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .status { display:grid; grid-template-columns: 140px 1fr; gap: 4px 12px; font-size: 14px; margin-top: 12px; }
-    .status dt { color: var(--muted); } .status dd { margin: 0; overflow-wrap: anywhere; }
-    .ok { color: var(--ok); } .bad { color: var(--bad); }
-    #log { font: 12px/1.5 ui-monospace, monospace; max-height: 240px; overflow:auto; white-space: pre-wrap; margin: 0; }
-    #notifications:empty::before { content: "No notifications yet."; color: var(--muted); }
-    #notifications li { margin-bottom: 6px; }
-  </style>
-</head>
-<body>
-<main>
-  <h1>Badal Booking – test client</h1>
-  <p class="sub">Signs in with Firebase, exchanges the Firebase token for the API's JWT, and receives push notifications.</p>
-
-  <section>
-    <h2>1. Firebase account</h2>
-    <label for="email">Email</label>
-    <input id="email" type="email" autocomplete="username">
-    <label for="password">Password</label>
-    <input id="password" type="password" autocomplete="current-password">
-    <div class="row">
-      <button id="signIn" class="primary">Sign in</button>
-      <button id="signUp">Create account</button>
-      <button id="sendVerification" disabled>Send verification email</button>
-      <button id="refresh" disabled>I verified – refresh</button>
-      <button id="signOut" disabled>Sign out</button>
-    </div>
-    <dl class="status">
-      <dt>Firebase user</dt><dd id="fbUser">signed out</dd>
-      <dt>Email verified</dt><dd id="fbVerified">–</dd>
-    </dl>
-  </section>
-
-  <section>
-    <h2>2. API session</h2>
-    <div class="row"><button id="exchange" class="primary" disabled>Get API token (POST /auth/firebase)</button></div>
-    <dl class="status">
-      <dt>API</dt><dd id="apiUrl"></dd>
-      <dt>API user</dt><dd id="apiUser">–</dd>
-    </dl>
-  </section>
-
-  <section>
-    <h2>Bookings (to trigger notifications)</h2>
-    <div class="row">
-      <button id="createPaid" disabled>Create + pay a booking</button>
-      <button id="createUnpaid" disabled>Create an unpaid booking</button>
-      <button id="listBookings" disabled>My last 5 bookings</button>
-    </div>
-    <ul id="bookings"></ul>
-  </section>
-
-  <section>
-    <h2>3. Push notifications</h2>
-    <div class="row">
-      <button id="enablePush" disabled>Allow notifications &amp; get device token</button>
-      <button id="registerDevice" disabled>Register device (POST /devices)</button>
-      <button id="logout" disabled>Log out (POST /auth/logout)</button>
-    </div>
-    <dl class="status">
-      <dt>Permission</dt><dd id="pushPermission">–</dd>
-      <dt>Device token</dt><dd id="pushToken">–</dd>
-      <dt>Registered</dt><dd id="deviceRegistered">–</dd>
-    </dl>
-    <h2 style="margin-top:14px">Received</h2>
-    <ul id="notifications"></ul>
-  </section>
-
-  <section>
-    <h2>Log</h2>
-    <pre id="log"></pre>
-  </section>
-</main>
-
-<script src="firebase-config.js"></script>
-<script type="module" src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Badal Booking – book Umrah by proxy" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='system-ui'>B</text></svg>" />
+    <title>Badal Booking</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
