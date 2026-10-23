@@ -91,6 +91,19 @@ builder.Services
         };
     });
 
+// Check token expiry with the SAME clock that issued the token (the injected TimeProvider),
+// instead of the system clock. One clock for the whole app; tests can move it safely.
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<TimeProvider>((options, clock) =>
+        options.TokenValidationParameters.LifetimeValidator = (notBefore, expires, _, parameters) =>
+        {
+            var now = clock.GetUtcNow().UtcDateTime;
+            var skew = parameters.ClockSkew;
+            return expires is not null
+                && now - skew < expires.Value
+                && (notBefore is null || notBefore.Value <= now + skew);
+        });
+
 // Role checks used by the booking endpoints (step 1.4 onwards).
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthClaims.CustomerPolicy, p => p.RequireRole(nameof(UserRole.Customer)))
