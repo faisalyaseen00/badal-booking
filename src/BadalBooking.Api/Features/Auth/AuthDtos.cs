@@ -6,6 +6,9 @@ public sealed record RegisterRequest(string? Email, string? Password);
 
 public sealed record LoginRequest(string? Email, string? Password);
 
+// The ID token the Firebase client SDK gives after sign-in (user.getIdToken()).
+public sealed record FirebaseSignInRequest(string? IdToken);
+
 // Responses never include the password hash.
 public sealed record UserDto(Guid Id, string Email, string Role);
 

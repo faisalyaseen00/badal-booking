@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<FirebaseIdentity> FirebaseIdentities => Set<FirebaseIdentity>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -54,6 +55,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 t.HasCheckConstraint("ck_bookings_accepted_has_performer",
                     "(status = 'Accepted') = (performer_id IS NOT NULL)");
             });
+        });
+
+        model.Entity<FirebaseIdentity>(identity =>
+        {
+            identity.Property(x => x.FirebaseUid).HasMaxLength(128); // Firebase uids are at most 128 chars
+            identity.HasIndex(x => x.FirebaseUid).IsUnique();
+            identity.HasIndex(x => x.UserId).IsUnique();
+            identity.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         model.Entity<Payment>(payment =>

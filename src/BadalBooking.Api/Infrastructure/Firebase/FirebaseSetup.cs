@@ -25,6 +25,7 @@ public static class FirebaseSetup
         }
 
         builder.Services.AddSingleton(_ => CreateApp(projectId, json));
+        builder.Services.AddSingleton<IFirebaseTokenVerifier, FirebaseTokenVerifier>();
     }
 
     private static FirebaseApp CreateApp(string projectId, string json)

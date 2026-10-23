@@ -61,6 +61,7 @@ builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
 
 // ---------- Firebase Admin SDK (sign-in + push, Phase 2) ----------
 builder.AddFirebase(); // key comes only from Firebase__ServiceAccountJson
+builder.Services.AddScoped<FirebaseSignInService>();
 
 // ---------- Background job: expire bookings unpaid for 30 minutes ----------
 var expiry = ExpiryOptions.LoadAndValidate(builder.Configuration);

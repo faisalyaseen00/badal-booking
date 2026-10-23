@@ -102,6 +102,41 @@ namespace BadalBooking.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BadalBooking.Api.Domain.FirebaseIdentity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("FirebaseUid")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("firebase_uid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_firebase_identities");
+
+                    b.HasIndex("FirebaseUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_firebase_identities_firebase_uid");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_firebase_identities_user_id");
+
+                    b.ToTable("firebase_identities", "app");
+                });
+
             modelBuilder.Entity("BadalBooking.Api.Domain.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -242,6 +277,16 @@ namespace BadalBooking.Api.Data.Migrations
                         .HasForeignKey("PerformerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_bookings_users_performer_id");
+                });
+
+            modelBuilder.Entity("BadalBooking.Api.Domain.FirebaseIdentity", b =>
+                {
+                    b.HasOne("BadalBooking.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_firebase_identities_users_user_id");
                 });
 
             modelBuilder.Entity("BadalBooking.Api.Domain.Payment", b =>

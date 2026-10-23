@@ -3,6 +3,7 @@ using System.Security.Claims;
 using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Infrastructure.Auth;
+using BadalBooking.Api.Infrastructure.Firebase;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -24,9 +25,52 @@ public static class AuthEndpoints
         // Brute-force protection only on the anonymous endpoints.
         auth.MapPost("/register", Register).RequireRateLimiting(RateLimitPolicy);
         auth.MapPost("/login", Login).RequireRateLimiting(RateLimitPolicy);
+        auth.MapPost("/firebase", FirebaseSignIn).RequireRateLimiting(RateLimitPolicy);
         auth.MapGet("/me", Me).RequireAuthorization();
 
         return app;
+    }
+
+    // POST /auth/firebase { "idToken": "<Firebase ID token from the client SDK>" }
+    // Verify the token with Firebase, find or create the local user, return OUR JWT
+    // (the same kind of token /auth/login returns). The Firebase token is never stored or logged.
+    private static async Task<IResult> FirebaseSignIn(
+        FirebaseSignInRequest request, IServiceProvider services, FirebaseSignInService signIn,
+        JwtTokenService tokens, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.IdToken) || request.IdToken.Length > 8192)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["idToken"] = ["A Firebase ID token is required."] });
+
+        var verifier = services.GetService<IFirebaseTokenVerifier>();
+        if (verifier is null)
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Firebase sign-in is not configured.");
+
+        VerifiedFirebaseUser firebaseUser;
+        try
+        {
+            firebaseUser = await verifier.VerifyAsync(request.IdToken, ct);
+        }
+        catch (FirebaseVerificationException ex) when (ex.Failure == FirebaseVerifyFailure.ServiceUnavailable)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Firebase is temporarily unavailable.");
+        }
+        catch (FirebaseVerificationException)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Invalid Firebase ID token.");
+        }
+
+        var result = await signIn.SignInAsync(firebaseUser, ct);
+        return result.Error switch
+        {
+            null => Results.Ok(ToResponse(result.User!, tokens.Issue(result.User!))),
+            FirebaseSignInError.EmailMissing => Results.Problem(statusCode: StatusCodes.Status403Forbidden,
+                title: "The Firebase account has no email address."),
+            FirebaseSignInError.EmailNotVerified => Results.Problem(statusCode: StatusCodes.Status403Forbidden,
+                title: "Verify your email address in Firebase before signing in."),
+            // Same message for both, so the response doesn't reveal that an email belongs to a performer.
+            _ => Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                title: "This email can't be used with Firebase sign-in. Sign in with your password instead."),
+        };
     }
 
     // POST /auth/register — always creates a CUSTOMER. There is no public way to become a Performer.
