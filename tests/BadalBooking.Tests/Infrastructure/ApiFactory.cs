@@ -23,6 +23,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public const string PerformerEmail = "seeded.performer@test.local";
     public const string PerformerPassword = "Performer-Test-Password-1";
     public const string TestPassword = "Secret123!";
+    public const string AdminEmail = "seeded.admin@test.local";
+    public const string AdminPassword = "Admin-Test-Password-1";
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17")
         .WithDatabase("badal_test")
@@ -59,6 +61,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Jwt:Audience", "BadalBooking.Clients");
         builder.UseSetting("Seed:PerformerEmail", PerformerEmail);
         builder.UseSetting("Seed:PerformerPassword", PerformerPassword);
+        builder.UseSetting("Seed:AdminEmail", AdminEmail);
+        builder.UseSetting("Seed:AdminPassword", AdminPassword);
         builder.UseSetting("Cors:AllowedOrigins:0", "https://status.test.example");
         builder.UseSetting("Expiry:Enabled", "false");            // tests run expiry explicitly
         builder.UseSetting("Push:Enabled", "false");              // tests run the push dispatcher explicitly

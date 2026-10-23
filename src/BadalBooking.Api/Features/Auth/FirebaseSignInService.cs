@@ -19,7 +19,7 @@ public sealed record FirebaseSignInResult(User? User, FirebaseSignInError? Error
 // Decides which local account a VERIFIED Firebase user becomes. Rules, in order:
 //  1. Firebase uid already linked        -> that user (its role comes from OUR database).
 //  2. No email / email not verified       -> refuse. (Prevents someone claiming an email they don't own.)
-//  3. Email belongs to a Performer        -> refuse. A Firebase login can NEVER become a performer.
+//  3. Email belongs to a Performer/Admin  -> refuse. A Firebase login can never take over those by email.
 //  4. Email belongs to a Customer         -> link, unless that customer is already linked to another uid.
 //  5. Email unknown                       -> create a new Customer and link.
 public sealed class FirebaseSignInService(AppDbContext db, TimeProvider clock)
@@ -58,8 +58,9 @@ public sealed class FirebaseSignInService(AppDbContext db, TimeProvider clock)
         var now = clock.GetUtcNow().UtcDateTime;
         var existing = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Email == email, ct);
 
-        // 3. Never take over a performer.
-        if (existing?.Role == UserRole.Performer) return new(null, FirebaseSignInError.PerformerAccount);
+        // 3. Never take over a performer or admin by email. (Approved performers who signed up with
+        //    Firebase are found by rule 1 via their uid, so they still sign in normally.)
+        if (existing is not null && existing.Role != UserRole.Customer) return new(null, FirebaseSignInError.PerformerAccount);
 
         if (existing is not null)
         {

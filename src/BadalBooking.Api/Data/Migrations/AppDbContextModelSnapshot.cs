@@ -336,6 +336,79 @@ namespace BadalBooking.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BadalBooking.Api.Domain.PerformerApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTime?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_performer_applications");
+
+                    b.HasIndex("DecidedByUserId")
+                        .HasDatabaseName("ix_performer_applications_decided_by_user_id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_performer_applications_one_pending_per_user")
+                        .HasFilter("status = 'Pending'");
+
+                    b.HasIndex("Status", "CreatedAtUtc")
+                        .HasDatabaseName("ix_performer_applications_status_created_at_utc");
+
+                    b.ToTable("performer_applications", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_performer_applications_decision_fields", "(status = 'Pending') = (decided_at_utc IS NULL AND decided_by_user_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_performer_applications_status_valid", "status IN ('Pending', 'Approved', 'Rejected')");
+                        });
+                });
+
             modelBuilder.Entity("BadalBooking.Api.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -372,7 +445,7 @@ namespace BadalBooking.Api.Data.Migrations
 
                     b.ToTable("users", "app", t =>
                         {
-                            t.HasCheckConstraint("ck_users_role_valid", "role IN ('Customer', 'Performer')");
+                            t.HasCheckConstraint("ck_users_role_valid", "role IN ('Customer', 'Performer', 'Admin')");
                         });
                 });
 
@@ -444,6 +517,22 @@ namespace BadalBooking.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_payments_users_customer_id");
+                });
+
+            modelBuilder.Entity("BadalBooking.Api.Domain.PerformerApplication", b =>
+                {
+                    b.HasOne("BadalBooking.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_performer_applications_users_decided_by_user_id");
+
+                    b.HasOne("BadalBooking.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_performer_applications_users_user_id");
                 });
 #pragma warning restore 612, 618
         }

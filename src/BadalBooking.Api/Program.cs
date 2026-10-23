@@ -5,6 +5,7 @@ using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Features.Bookings;
 using BadalBooking.Api.Features.Devices;
+using BadalBooking.Api.Features.PerformerApplications;
 using BadalBooking.Api.Features.Payments;
 using BadalBooking.Api.Features.Performers;
 using BadalBooking.Api.Infrastructure.Payments;
@@ -121,7 +122,8 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 // Role checks used by the booking endpoints (step 1.4 onwards).
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthClaims.CustomerPolicy, p => p.RequireRole(nameof(UserRole.Customer)))
-    .AddPolicy(AuthClaims.PerformerPolicy, p => p.RequireRole(nameof(UserRole.Performer)));
+    .AddPolicy(AuthClaims.PerformerPolicy, p => p.RequireRole(nameof(UserRole.Performer)))
+    .AddPolicy(AuthClaims.AdminPolicy, p => p.RequireRole(nameof(UserRole.Admin)));
 
 // ---------- Rate limiting for login/register (brute-force protection) ----------
 var authPermitsPerMinute = builder.Configuration.GetValue("RateLimits:AuthPerMinute", 10);
@@ -158,9 +160,10 @@ app.MapBookingEndpoints();
 app.MapPaymentEndpoints();
 app.MapPerformerEndpoints();
 app.MapDeviceEndpoints();
+app.MapPerformerApplicationEndpoints();
 
-// Create the demo performer account if it doesn't exist yet (performers can't self-register).
-await PerformerSeeder.SeedAsync(app.Services);
+// Create the admin (and optional demo performer) if they don't exist yet. Neither can self-register.
+await AccountSeeder.SeedAsync(app.Services);
 
 app.Logger.LogWarning("Payments are SIMULATED: no real money is charged (Payments__Provider={Provider}).", paymentProvider);
 

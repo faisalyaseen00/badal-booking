@@ -15,6 +15,8 @@ export function Layout() {
           </NavLink>
           <nav className="nav">
             {role === "Customer" && <NavLink to="/bookings">My bookings</NavLink>}
+            {role === "Customer" && <NavLink to="/become-performer">Become a performer</NavLink>}
+            {role === "Admin" && <NavLink to="/admin">Performer applications</NavLink>}
             {role === "Performer" && <NavLink to="/performer">Available bookings</NavLink>}
             <NavLink to="/status">Status</NavLink>
           </nav>

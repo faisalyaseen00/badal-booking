@@ -15,4 +15,4 @@ export function RequireRole({ role, children }: { role: Role; children: ReactNod
   return <>{children}</>;
 }
 
-export const homeFor = (role: Role) => (role === "Performer" ? "/performer" : "/bookings");
+export const homeFor = (role: Role) => (role === "Performer" ? "/performer" : role === "Admin" ? "/admin" : "/bookings");

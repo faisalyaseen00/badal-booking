@@ -82,15 +82,15 @@ export function LoginPage() {
   return (
     <div className="card narrow">
       <div className="tabs">
-        <button className={tab === "customer" ? "tab active" : "tab"} onClick={() => setTab("customer")}>Customer</button>
-        <button className={tab === "performer" ? "tab active" : "tab"} onClick={() => setTab("performer")}>Performer</button>
+        <button className={tab === "customer" ? "tab active" : "tab"} onClick={() => setTab("customer")}>Customer / Performer</button>
+        <button className={tab === "performer" ? "tab active" : "tab"} onClick={() => setTab("performer")}>Staff</button>
       </div>
 
-      <h1>{tab === "performer" ? "Performer sign in" : mode === "signup" ? "Create your account" : "Sign in"}</h1>
+      <h1>{tab === "performer" ? "Staff sign in" : mode === "signup" ? "Create your account" : "Sign in"}</h1>
       <p className="muted">
         {tab === "performer"
-          ? "Performer accounts are created by the administrator."
-          : "Book an Umrah performed on behalf of a loved one. Fixed price: 500 SAR."}
+          ? "For the administrator and staff accounts created on the server."
+          : "Book an Umrah for a loved one, or apply to become a performer. Approved performers sign in here too."}
       </p>
 
       <form onSubmit={submit} className="form">
@@ -100,7 +100,7 @@ export function LoginPage() {
         {error && <p className="alert alert-error">{error}</p>}
         {info && <p className="alert alert-ok">{info}</p>}
         <button className="btn btn-primary btn-block" disabled={busy}>
-          {busy ? "Please wait…" : tab === "performer" ? "Sign in as performer" : mode === "signup" ? "Create account" : "Sign in"}
+          {busy ? "Please wait…" : tab === "performer" ? "Sign in as staff" : mode === "signup" ? "Create account" : "Sign in"}
         </button>
       </form>
 

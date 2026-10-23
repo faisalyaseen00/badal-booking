@@ -27,6 +27,9 @@ public static class TestApi
         return await ToSessionAsync(client, response);
     }
 
+    public static Task<Session> LoginAdminAsync(this ApiFactory api) =>
+        api.LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
+
     public static Task<Session> LoginSeededPerformerAsync(this ApiFactory api) =>
         api.LoginAsync(ApiFactory.PerformerEmail, ApiFactory.PerformerPassword);
 

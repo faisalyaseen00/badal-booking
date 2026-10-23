@@ -21,6 +21,8 @@ interface AuthState {
   resendVerification(): Promise<void>;
   checkVerified(): Promise<boolean>;
   signInPerformer(email: string, password: string): Promise<void>;
+  // Get a fresh API token (e.g. after an admin approved you: the new token carries the new role).
+  refreshSession(): Promise<void>;
   logout(): Promise<void>;
   setBeforeLogout(fn: (() => Promise<void>) | null): void;
 }
@@ -117,6 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const s = toSession(result, "password");
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s));
       setSession(s);
+    },
+
+    async refreshSession() {
+      if (session?.method === "firebase" && firebaseAuth.currentUser) await exchange(firebaseAuth.currentUser, true);
     },
 
     async logout() {

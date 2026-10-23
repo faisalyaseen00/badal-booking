@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FirebaseIdentity> FirebaseIdentities => Set<FirebaseIdentity>();
     public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
+    public DbSet<PerformerApplication> PerformerApplications => Set<PerformerApplication>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -27,7 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             user.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
 
-            user.ToTable(t => t.HasCheckConstraint("ck_users_role_valid", "role IN ('Customer', 'Performer')"));
+            user.ToTable(t => t.HasCheckConstraint("ck_users_role_valid", "role IN ('Customer', 'Performer', 'Admin')"));
         });
 
         model.Entity<Booking>(booking =>
@@ -95,6 +96,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             outbox.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
             outbox.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        model.Entity<PerformerApplication>(app =>
+        {
+            app.Property(x => x.FullName).HasMaxLength(PerformerApplication.FullNameMaxLength);
+            app.Property(x => x.Phone).HasMaxLength(PerformerApplication.PhoneMaxLength);
+            app.Property(x => x.Note).HasMaxLength(PerformerApplication.NoteMaxLength);
+            app.Property(x => x.DecisionNote).HasMaxLength(PerformerApplication.DecisionNoteMaxLength);
+            app.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+
+            // One OPEN application per user (old approved/rejected ones don't count).
+            app.HasIndex(x => x.UserId).IsUnique().HasFilter("status = 'Pending'")
+                .HasDatabaseName("ux_performer_applications_one_pending_per_user");
+            app.HasIndex(x => new { x.Status, x.CreatedAtUtc }); // admin list
+
+            app.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            app.HasOne<User>().WithMany().HasForeignKey(x => x.DecidedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+            app.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_performer_applications_status_valid", "status IN ('Pending', 'Approved', 'Rejected')");
+                // Decided <=> has a decider and a time.
+                t.HasCheckConstraint("ck_performer_applications_decision_fields",
+                    "(status = 'Pending') = (decided_at_utc IS NULL AND decided_by_user_id IS NULL)");
+            });
         });
 
         model.Entity<Payment>(payment =>

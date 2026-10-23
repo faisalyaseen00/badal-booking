@@ -5,6 +5,8 @@ import { RequireRole, homeFor } from "./components/RequireRole";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFound, StatusPage } from "./pages/Placeholders";
 import { PerformerHome } from "./pages/PerformerHome";
+import { BecomePerformer } from "./pages/BecomePerformer";
+import { AdminApplications } from "./pages/AdminApplications";
 import { CustomerBookings } from "./pages/CustomerBookings";
 import { BookingDetail } from "./pages/BookingDetail";
 import { ToastProvider } from "./components/Toasts";
@@ -29,6 +31,8 @@ export function App() {
             <Route path="bookings" element={<RequireRole role="Customer"><CustomerBookings /></RequireRole>} />
             <Route path="bookings/:id" element={<RequireRole role="Customer"><BookingDetail /></RequireRole>} />
             <Route path="performer" element={<RequireRole role="Performer"><PerformerHome /></RequireRole>} />
+            <Route path="become-performer" element={<RequireRole role="Customer"><BecomePerformer /></RequireRole>} />
+            <Route path="admin" element={<RequireRole role="Admin"><AdminApplications /></RequireRole>} />
             <Route path="status" element={<StatusPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>

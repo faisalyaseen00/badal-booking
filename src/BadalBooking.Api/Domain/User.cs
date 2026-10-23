@@ -29,6 +29,9 @@ public class User
     // Only used by the server-side seed (step 1.6). There is no public way to become a Performer.
     public static User CreatePerformer(string email, DateTime nowUtc) => Create(email, UserRole.Performer, nowUtc);
 
+    // Only used by the server-side seed. There is no public way to become an Admin.
+    public static User CreateAdmin(string email, DateTime nowUtc) => Create(email, UserRole.Admin, nowUtc);
+
     private static User Create(string email, UserRole role, DateTime nowUtc) => new()
     {
         Id = Guid.CreateVersion7(),

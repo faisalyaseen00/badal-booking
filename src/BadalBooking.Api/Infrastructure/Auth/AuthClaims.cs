@@ -11,6 +11,7 @@ public static class AuthClaims
 
     public const string CustomerPolicy = "CustomerOnly";
     public const string PerformerPolicy = "PerformerOnly";
+    public const string AdminPolicy = "AdminOnly";
 
     // The user id ALWAYS comes from the validated token, never from the URL or body.
     // That is what stops "user A acts as user B" (IDOR) in the booking endpoints.
