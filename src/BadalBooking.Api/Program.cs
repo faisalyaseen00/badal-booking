@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using BadalBooking.Api.Background;
 using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
@@ -56,6 +57,12 @@ var paymentProvider = builder.Configuration["Payments:Provider"] ?? SimulatedPay
 if (paymentProvider != SimulatedPaymentGateway.ProviderName)
     throw new InvalidOperationException($"Payments__Provider '{paymentProvider}' is not supported. Use '{SimulatedPaymentGateway.ProviderName}'.");
 builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
+
+// ---------- Background job: expire bookings unpaid for 30 minutes ----------
+var expiry = ExpiryOptions.LoadAndValidate(builder.Configuration);
+builder.Services.AddSingleton(expiry);
+builder.Services.AddScoped<BookingExpiryService>();
+if (expiry.Enabled) builder.Services.AddHostedService<ExpiryWorker>();
 
 // ---------- Authentication: the API's own JWT ----------
 var jwt = JwtOptions.LoadAndValidate(builder.Configuration); // stops startup if Jwt__Key is missing/weak
