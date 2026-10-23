@@ -72,6 +72,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            services.RemoveAll<BadalBooking.Api.Infrastructure.Firebase.IFirebaseTokenVerifier>();
+            services.AddSingleton<BadalBooking.Api.Infrastructure.Firebase.IFirebaseTokenVerifier, FakeFirebaseVerifier>();
             services.RemoveAll<BadalBooking.Api.Infrastructure.Push.IPushSender>();
             services.AddSingleton<BadalBooking.Api.Infrastructure.Push.IPushSender>(Push);
         });
