@@ -9,6 +9,7 @@ using BadalBooking.Api.Features.Performers;
 using BadalBooking.Api.Infrastructure.Payments;
 using BadalBooking.Api.Infrastructure;
 using BadalBooking.Api.Infrastructure.Auth;
+using BadalBooking.Api.Infrastructure.Firebase;
 using BadalBooking.Api.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -57,6 +58,9 @@ var paymentProvider = builder.Configuration["Payments:Provider"] ?? SimulatedPay
 if (paymentProvider != SimulatedPaymentGateway.ProviderName)
     throw new InvalidOperationException($"Payments__Provider '{paymentProvider}' is not supported. Use '{SimulatedPaymentGateway.ProviderName}'.");
 builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
+
+// ---------- Firebase Admin SDK (sign-in + push, Phase 2) ----------
+builder.AddFirebase(); // key comes only from Firebase__ServiceAccountJson
 
 // ---------- Background job: expire bookings unpaid for 30 minutes ----------
 var expiry = ExpiryOptions.LoadAndValidate(builder.Configuration);
