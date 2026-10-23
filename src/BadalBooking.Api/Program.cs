@@ -6,6 +6,7 @@ using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Features.Bookings;
 using BadalBooking.Api.Features.Devices;
 using BadalBooking.Api.Features.Health;
+using BadalBooking.Api.Features.Status;
 using BadalBooking.Api.Features.PerformerApplications;
 using BadalBooking.Api.Features.Payments;
 using BadalBooking.Api.Features.Performers;
@@ -156,6 +157,7 @@ app.UseRateLimiter();
 // /ping proves the process is up; /health also checks the database.
 app.MapGet("/ping", () => Results.Ok(new { status = "ok" }));
 app.MapHealthEndpoints();
+app.MapStatusEndpoints();
 app.MapAuthEndpoints();
 app.MapBookingEndpoints();
 app.MapPaymentEndpoints();

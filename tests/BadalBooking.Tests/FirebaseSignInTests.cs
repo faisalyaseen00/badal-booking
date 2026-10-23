@@ -142,7 +142,8 @@ public class FirebaseSignInTests(ApiFactory api)
         await TestApi.RaceAsync(Enumerable.Range(0, 5).Select(i => (Func<Task<HttpResponseMessage>>)(async () =>
             responses[i] = await SignIn(uid, email, true))).ToArray());
 
-        Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
+        foreach (var r in responses)
+            Assert.True(r.StatusCode == HttpStatusCode.OK, $"{(int)r.StatusCode}: {await r.Content.ReadAsStringAsync()}");
         var ids = await Task.WhenAll(responses.Select(async r => (await UserOf(r)).Id));
         Assert.Single(ids.Distinct());
         await using var db = api.CreateDbContext();

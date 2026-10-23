@@ -65,8 +65,13 @@ public sealed class FirebaseSignInService(AppDbContext db, TimeProvider clock)
         if (existing is not null)
         {
             // 4. Link an existing customer, but never replace an existing link.
-            if (await db.FirebaseIdentities.AnyAsync(i => i.UserId == existing.Id, ct))
-                return new(null, FirebaseSignInError.AlreadyLinked);
+            var linkedUid = await db.FirebaseIdentities
+                .Where(i => i.UserId == existing.Id).Select(i => i.FirebaseUid).SingleOrDefaultAsync(ct);
+            // Same uid: a parallel request for THIS Firebase user created the account a moment ago
+            // (after our rule-1 check). It's the same person, so sign them in. (Race found by the
+            // "simultaneous first sign-ins" test: before this, one request in five could get 409.)
+            if (linkedUid == fb.Uid) return new(existing, null);
+            if (linkedUid is not null) return new(null, FirebaseSignInError.AlreadyLinked);
 
             db.FirebaseIdentities.Add(FirebaseIdentity.Link(existing.Id, fb.Uid, now));
             await db.SaveChangesAsync(ct);
