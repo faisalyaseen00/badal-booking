@@ -1,0 +1,98 @@
+# CI/CD for Badal Booking.
+#  - Every push and pull request: build + test the API, build the web app, build the Docker image.
+#  - Push to main, and only if ALL of that passed: deploy the API to Render, then confirm the
+#    tested commit is the one actually running (via /health's version field).
+# The web app is deployed by Vercel's own GitHub integration (it builds every push to main).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API – build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json # same SDK as local
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      # Integration tests start their own throwaway PostgreSQL 17 container (Testcontainers);
+      # GitHub's Ubuntu runners have Docker. No secrets needed: Firebase and FCM are faked.
+      - run: dotnet test --no-build -c Release --logger "trx;LogFileName=results.trx"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: tests/**/TestResults/*.trx
+
+  web:
+    name: Web app – type-check and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag badal-booking-api:ci .
+
+  deploy:
+    name: Deploy API to Render
+    needs: [api, web, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production # never two deploys at once
+      cancel-in-progress: false
+    env:
+      HEALTH_URL: https://badal-booking.onrender.com/health
+    steps:
+      - name: Check the deploy hook secret exists
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Add the RENDER_DEPLOY_HOOK_URL secret (GitHub repo -> Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        # The hook URL is a secret (anyone with it can redeploy), so it's never echoed.
+        run: curl --fail --silent --show-error --request POST "$HOOK" > /dev/null
+
+      - name: Wait until the tested commit is live
+        # Render's free plan builds slowly and may also need to wake up, so allow up to ~15 minutes.
+        run: |
+          expected="${GITHUB_SHA::7}"
+          for attempt in $(seq 1 60); do
+            body=$(curl --silent --max-time 60 "$HEALTH_URL" || true)
+            echo "attempt $attempt: $body"
+            if echo "$body" | grep -q "\"status\":\"Healthy\"" && echo "$body" | grep -q "\"version\":\"$expected\""; then
+              echo "Deployed commit $expected is live and healthy."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Commit $expected did not become live and healthy in time."
+          exit 1
