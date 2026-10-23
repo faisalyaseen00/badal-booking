@@ -8,6 +8,9 @@ namespace BadalBooking.Api.Features.Bookings;
 // because they don't exist here, and the server sets them itself.
 public sealed record CreateBookingRequest(string? PilgrimName);
 
+// Refunded = true when the booking had been paid and the (simulated) payment was refunded.
+public sealed record CancelBookingResponse(BookingDto Booking, bool Refunded);
+
 // What the API returns. Built from the database row, never echoed from the request.
 public sealed record BookingDto(
     Guid Id,

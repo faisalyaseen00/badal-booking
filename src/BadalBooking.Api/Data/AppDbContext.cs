@@ -63,6 +63,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             payment.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             payment.Property(x => x.Provider).HasMaxLength(30);
             payment.Property(x => x.ProviderReference).HasMaxLength(100);
+            payment.Property(x => x.RefundReference).HasMaxLength(100);
 
             payment.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
             payment.HasOne<User>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
@@ -81,7 +82,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 t.HasCheckConstraint("ck_payments_amount_positive", "amount_halalas > 0");
                 t.HasCheckConstraint("ck_payments_currency_sar", "currency = 'SAR'");
-                t.HasCheckConstraint("ck_payments_status_valid", "status IN ('Succeeded', 'Failed')");
+                t.HasCheckConstraint("ck_payments_status_valid", "status IN ('Succeeded', 'Failed', 'Refunded')");
+                // A refunded payment must say when and with which refund reference; others must not.
+                t.HasCheckConstraint("ck_payments_refund_fields",
+                    "(status = 'Refunded') = (refunded_at_utc IS NOT NULL AND refund_reference IS NOT NULL)");
             });
         });
     }

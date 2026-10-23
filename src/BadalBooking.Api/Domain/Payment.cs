@@ -3,7 +3,8 @@ namespace BadalBooking.Api.Domain;
 public enum PaymentStatus
 {
     Succeeded,
-    Failed, // reserved for a real gateway; the simulator always succeeds
+    Failed,   // reserved for a real gateway; the simulator always succeeds
+    Refunded, // the customer cancelled a paid booking before a performer accepted it
 }
 
 // One row per payment attempt that reached the gateway.
@@ -29,6 +30,17 @@ public class Payment
     public string ProviderReference { get; private set; } = ""; // the gateway's transaction id
 
     public DateTime CreatedAtUtc { get; private set; }
+    public DateTime? RefundedAtUtc { get; private set; }
+    public string? RefundReference { get; private set; }
+
+    public void MarkRefunded(string refundReference, DateTime nowUtc)
+    {
+        if (Status != PaymentStatus.Succeeded)
+            throw new InvalidOperationException($"Only a Succeeded payment can be refunded (was {Status}).");
+        Status = PaymentStatus.Refunded;
+        RefundReference = refundReference;
+        RefundedAtUtc = nowUtc;
+    }
 
     // Amount and currency are copied from the BOOKING (which got them from the business rule),
     // never from the request.

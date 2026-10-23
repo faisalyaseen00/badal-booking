@@ -2,6 +2,7 @@ using System.Security.Claims;
 using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Infrastructure.Auth;
+using BadalBooking.Api.Infrastructure.Payments;
 using Microsoft.EntityFrameworkCore;
 
 namespace BadalBooking.Api.Features.Bookings;
@@ -22,8 +23,76 @@ public static class BookingEndpoints
         customer.MapPost("/", Create);
         customer.MapGet("/", ListMine);
         customer.MapGet("/{id:guid}", GetMine);
+        customer.MapPost("/{id:guid}/cancel", Cancel);
 
         return app;
+    }
+
+    // POST /bookings/{id}/cancel — allowed only BEFORE a performer accepts.
+    //   PendingPayment -> Cancelled                       (nothing to refund)
+    //   Paid           -> Cancelled + simulated refund    (in one transaction)
+    //   Accepted / Cancelled / Expired -> 409
+    // Each change is a conditional UPDATE, so cancel and a performer's accept can never both win:
+    // PostgreSQL locks the row, and whichever commits second finds the status already changed.
+    private static async Task<IResult> Cancel(
+        Guid id, ClaimsPrincipal principal, AppDbContext db, IPaymentGateway gateway,
+        TimeProvider clock, CancellationToken ct)
+    {
+        var customerId = principal.GetUserId();
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Case 1: not paid yet. Nothing to refund.
+        var cancelledUnpaid = await db.Bookings
+            .Where(b => b.Id == id && b.CustomerId == customerId && b.Status == BookingStatus.PendingPayment)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(b => b.Status, BookingStatus.Cancelled)
+                .SetProperty(b => b.UpdatedAtUtc, now), ct);
+
+        var refunded = false;
+        if (cancelledUnpaid == 0)
+        {
+            // Case 2: paid, and no performer has accepted it yet.
+            var cancelledPaid = await db.Bookings
+                .Where(b => b.Id == id && b.CustomerId == customerId
+                         && b.Status == BookingStatus.Paid && b.PerformerId == null)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(b => b.Status, BookingStatus.Cancelled)
+                    .SetProperty(b => b.UpdatedAtUtc, now), ct);
+
+            if (cancelledPaid == 0)
+            {
+                await tx.RollbackAsync(ct);
+                var current = await db.Bookings.AsNoTracking()
+                    .Where(b => b.Id == id && b.CustomerId == customerId)
+                    .Select(b => (BookingStatus?)b.Status)
+                    .SingleOrDefaultAsync(ct);
+                return current is null
+                    ? Results.NotFound() // not yours or doesn't exist: same answer
+                    : Results.Problem(statusCode: StatusCodes.Status409Conflict,
+                        title: $"Booking cannot be cancelled because it is {current}.");
+            }
+
+            // Refund the payment in the SAME transaction as the cancellation.
+            var payment = await db.Payments
+                .SingleAsync(p => p.BookingId == id && p.Status == PaymentStatus.Succeeded, ct);
+            var refund = await gateway.RefundAsync(
+                new RefundRequest(payment.Id, payment.ProviderReference, payment.AmountHalalas, payment.Currency), ct);
+            if (!refund.Succeeded)
+            {
+                await tx.RollbackAsync(ct); // booking stays Paid; customer can try again
+                return Results.Problem(statusCode: StatusCodes.Status502BadGateway, title: "Refund failed. The booking was not cancelled.");
+            }
+            payment.MarkRefunded(refund.RefundReference, now);
+            await db.SaveChangesAsync(ct);
+            refunded = true;
+        }
+
+        await tx.CommitAsync(ct);
+
+        var booking = await db.Bookings.AsNoTracking().SingleAsync(b => b.Id == id, ct);
+        return Results.Ok(new CancelBookingResponse(BookingDto.From(booking), refunded));
     }
 
     // POST /bookings — the owner is the caller, the price is the business price. Neither comes from the body.

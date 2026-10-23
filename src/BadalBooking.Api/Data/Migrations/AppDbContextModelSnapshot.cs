@@ -149,6 +149,15 @@ namespace BadalBooking.Api.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("provider_reference");
 
+                    b.Property<string>("RefundReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("refund_reference");
+
+                    b.Property<DateTime?>("RefundedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refunded_at_utc");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -173,7 +182,9 @@ namespace BadalBooking.Api.Data.Migrations
 
                             t.HasCheckConstraint("ck_payments_currency_sar", "currency = 'SAR'");
 
-                            t.HasCheckConstraint("ck_payments_status_valid", "status IN ('Succeeded', 'Failed')");
+                            t.HasCheckConstraint("ck_payments_refund_fields", "(status = 'Refunded') = (refunded_at_utc IS NOT NULL AND refund_reference IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_payments_status_valid", "status IN ('Succeeded', 'Failed', 'Refunded')");
                         });
                 });
 
