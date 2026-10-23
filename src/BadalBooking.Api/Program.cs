@@ -64,6 +64,14 @@ builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
 builder.AddFirebase(); // key comes only from Firebase__ServiceAccountJson
 builder.Services.AddScoped<FirebaseSignInService>();
 
+// ---------- Background job: send queued push notifications (outbox) ----------
+var push = PushOptions.LoadAndValidate(builder.Configuration);
+builder.Services.AddSingleton(push);
+builder.Services.AddScoped<NotificationDispatcher>();
+// Only when a sender exists (Firebase configured, or a fake in tests). Without one, events stay queued.
+if (push.Enabled && builder.Services.Any(s => s.ServiceType == typeof(BadalBooking.Api.Infrastructure.Push.IPushSender)))
+    builder.Services.AddHostedService<PushWorker>();
+
 // ---------- Background job: expire bookings unpaid for 30 minutes ----------
 var expiry = ExpiryOptions.LoadAndValidate(builder.Configuration);
 builder.Services.AddSingleton(expiry);

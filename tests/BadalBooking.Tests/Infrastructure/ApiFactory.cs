@@ -31,6 +31,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     // A clock the tests control. Starts "now" and only moves when a test calls Advance().
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
 
+    // Fake FCM: records sends; tests choose per-token outcomes.
+    public FakePushSender Push { get; } = new();
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -58,12 +61,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Seed:PerformerPassword", PerformerPassword);
         builder.UseSetting("Cors:AllowedOrigins:0", "https://status.test.example");
         builder.UseSetting("Expiry:Enabled", "false");            // tests run expiry explicitly
+        builder.UseSetting("Push:Enabled", "false");              // tests run the push dispatcher explicitly
         builder.UseSetting("RateLimits:AuthPerMinute", "100000"); // tests log in a lot
 
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            services.RemoveAll<BadalBooking.Api.Infrastructure.Push.IPushSender>();
+            services.AddSingleton<BadalBooking.Api.Infrastructure.Push.IPushSender>(Push);
         });
     }
 

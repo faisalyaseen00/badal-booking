@@ -90,6 +90,7 @@ function render(user) {
   $("enablePush").disabled = !state.apiToken;
   $("registerDevice").disabled = !state.apiToken || !state.deviceToken;
   $("logout").disabled = !state.apiToken;
+  for (const id of ["createPaid", "createUnpaid", "listBookings"]) $(id).disabled = !state.apiToken;
   set("apiUser", state.apiUser ? `${state.apiUser.email} (${state.apiUser.role})` : "–", state.apiUser ? "ok" : "");
 }
 
@@ -145,6 +146,30 @@ $("logout").onclick = () => run("Log out", async () => {
   render(null);
   log("Logged out: device token removed from the API, API token discarded, signed out of Firebase.", "ok");
 });
+
+// ---------- Bookings: create some so a performer can accept them (or they expire) ----------
+async function createBooking(pay) {
+  const booking = await callApi("/bookings", { method: "POST", body: JSON.stringify({ pilgrimName: "Test Pilgrim" }) });
+  if (pay) {
+    await callApi(`/bookings/${booking.id}/pay`, { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() } });
+  }
+  log(`Booking ${booking.id} created${pay ? " and paid (waiting for a performer)" : " (unpaid: expires in 30 min)"}.`, "ok");
+  await listBookings();
+}
+
+async function listBookings() {
+  const bookings = await callApi("/bookings?limit=5");
+  const ul = $("bookings");
+  ul.replaceChildren(...bookings.map((b) => {
+    const li = document.createElement("li");
+    li.textContent = `${b.id} – ${b.status} – ${b.amount} ${b.currency}`;
+    return li;
+  }));
+}
+
+$("createPaid").onclick = () => run("Create + pay", () => createBooking(true));
+$("createUnpaid").onclick = () => run("Create", () => createBooking(false));
+$("listBookings").onclick = () => run("List bookings", listBookings);
 
 function showNotification(payload) {
   const li = document.createElement("li");
