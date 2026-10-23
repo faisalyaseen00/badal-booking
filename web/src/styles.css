@@ -99,3 +99,4 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-colo
 .toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 50; max-width: min(360px, calc(100vw - 32px)); }
 .toast { display: grid; gap: 2px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.12); font-size: 14px; }
 .toast-ok { border-left: 4px solid var(--ok); } .toast-error { border-left: 4px solid var(--bad); } .toast-info { border-left: 4px solid var(--accent); }
+.section-title { margin: 26px 0 10px; }

@@ -45,6 +45,24 @@ public class AcceptAndCancelTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Performer_sees_only_the_bookings_they_accepted()
+    {
+        var alice = await api.RegisterCustomerAsync();
+        var me = await api.NewPerformerAsync();
+        var other = await api.NewPerformerAsync();
+        var mine = await alice.CreatePaidBookingAsync();
+        var theirs = await alice.CreatePaidBookingAsync();
+        (await me.AcceptAsync(mine)).EnsureSuccessStatusCode();
+        (await other.AcceptAsync(theirs)).EnsureSuccessStatusCode();
+
+        var list = (await (await me.Client.GetAsync("/performer/bookings")).Json()).EnumerateArray()
+            .Select(b => b.GetProperty("id").GetGuid()).ToList();
+
+        Assert.Equal([mine], list);
+        Assert.Equal(HttpStatusCode.Forbidden, (await alice.Client.GetAsync("/performer/bookings")).StatusCode);
+    }
+
+    [Fact]
     public async Task Unpaid_booking_cannot_be_accepted()
     {
         var alice = await api.RegisterCustomerAsync();

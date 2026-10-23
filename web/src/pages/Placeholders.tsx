@@ -1,15 +1,6 @@
 import { Link } from "react-router";
 
 // Screens filled in by later steps. Kept tiny so step 2.7 is only the foundation.
-export function PerformerHome() {
-  return (
-    <div className="card">
-      <h1>Available bookings</h1>
-      <p className="muted">Performer screens arrive in step 2.9.</p>
-    </div>
-  );
-}
-
 export function StatusPage() {
   return (
     <div className="card">

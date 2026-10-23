@@ -11,6 +11,8 @@ public sealed record AvailableBookingDto(Guid Id, string PilgrimName, DateTime C
 
 public sealed record AcceptBookingResponse(Guid BookingId, string Status, DateTime AcceptedAtUtc);
 
+public sealed record AcceptedBookingDto(Guid Id, string PilgrimName, DateTime CreatedAtUtc, DateTime AcceptedAtUtc);
+
 public static class PerformerEndpoints
 {
     private const int MaxAvailable = 50;
@@ -25,7 +27,25 @@ public static class PerformerEndpoints
         performer.MapGet("/available", ListAvailable);
         performer.MapPost("/{id:guid}/accept", Accept);
 
+        app.MapGet("/performer/bookings", ListMine)
+            .WithTags("Performers")
+            .RequireAuthorization(AuthClaims.PerformerPolicy);
+
         return app;
+    }
+
+    // GET /performer/bookings — bookings THIS performer has accepted, newest first.
+    // Filtered by performer_id from the token: a performer never sees another performer's work.
+    private static async Task<IResult> ListMine(ClaimsPrincipal principal, AppDbContext db, CancellationToken ct)
+    {
+        var performerId = principal.GetUserId();
+        var mine = await db.Bookings.AsNoTracking()
+            .Where(b => b.PerformerId == performerId && b.Status == BookingStatus.Accepted)
+            .OrderByDescending(b => b.UpdatedAtUtc)
+            .Take(MaxAvailable)
+            .Select(b => new AcceptedBookingDto(b.Id, b.PilgrimName, b.CreatedAtUtc, b.UpdatedAtUtc))
+            .ToListAsync(ct);
+        return Results.Ok(mine);
     }
 
     // GET /bookings/available — paid bookings nobody has accepted yet, oldest first (fair queue).
