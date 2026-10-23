@@ -3,6 +3,8 @@ using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Features.Bookings;
+using BadalBooking.Api.Features.Payments;
+using BadalBooking.Api.Infrastructure.Payments;
 using BadalBooking.Api.Infrastructure;
 using BadalBooking.Api.Infrastructure.Auth;
 using BadalBooking.Api.Infrastructure.Hosting;
@@ -45,6 +47,14 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 // Consistent RFC 7807 JSON error bodies for 400/401/403/404/409/429/500.
 builder.Services.AddProblemDetails();
+
+// ---------- Payments ----------
+// Only the simulator exists today. Any other value stops startup, so production can never
+// silently run with a gateway that isn't really there.
+var paymentProvider = builder.Configuration["Payments:Provider"] ?? SimulatedPaymentGateway.ProviderName;
+if (paymentProvider != SimulatedPaymentGateway.ProviderName)
+    throw new InvalidOperationException($"Payments__Provider '{paymentProvider}' is not supported. Use '{SimulatedPaymentGateway.ProviderName}'.");
+builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
 
 // ---------- Authentication: the API's own JWT ----------
 var jwt = JwtOptions.LoadAndValidate(builder.Configuration); // stops startup if Jwt__Key is missing/weak
@@ -110,6 +120,9 @@ app.UseRateLimiter();
 app.MapGet("/ping", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapBookingEndpoints();
+app.MapPaymentEndpoints();
+
+app.Logger.LogWarning("Payments are SIMULATED: no real money is charged (Payments__Provider={Provider}).", paymentProvider);
 
 app.Run();
 

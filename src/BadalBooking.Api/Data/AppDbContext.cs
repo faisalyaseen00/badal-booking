@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -52,6 +53,35 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // and can't have a performer while still pending, paid, cancelled or expired.
                 t.HasCheckConstraint("ck_bookings_accepted_has_performer",
                     "(status = 'Accepted') = (performer_id IS NOT NULL)");
+            });
+        });
+
+        model.Entity<Payment>(payment =>
+        {
+            payment.Property(x => x.IdempotencyKey).HasMaxLength(Payment.IdempotencyKeyMaxLength);
+            payment.Property(x => x.Currency).HasMaxLength(3);
+            payment.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            payment.Property(x => x.Provider).HasMaxLength(30);
+            payment.Property(x => x.ProviderReference).HasMaxLength(100);
+
+            payment.HasOne<Booking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+            payment.HasOne<User>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+
+            // Same customer + same key = the same payment. A retry finds the stored row instead of charging again.
+            payment.HasIndex(x => new { x.CustomerId, x.IdempotencyKey }).IsUnique();
+
+            // At most ONE successful payment per booking, even if two requests use DIFFERENT keys.
+            // (Partial unique index: only rows with status = 'Succeeded' count.)
+            payment.HasIndex(x => x.BookingId)
+                .IsUnique()
+                .HasFilter("status = 'Succeeded'")
+                .HasDatabaseName("ux_payments_one_success_per_booking");
+
+            payment.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_payments_amount_positive", "amount_halalas > 0");
+                t.HasCheckConstraint("ck_payments_currency_sar", "currency = 'SAR'");
+                t.HasCheckConstraint("ck_payments_status_valid", "status IN ('Succeeded', 'Failed')");
             });
         });
     }

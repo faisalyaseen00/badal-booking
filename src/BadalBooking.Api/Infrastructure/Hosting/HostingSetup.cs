@@ -62,6 +62,7 @@ public static class HostingSetup
             .WithOrigins(origins) // empty list = no browser origin allowed at all
             .WithHeaders("Authorization", "Content-Type", "Idempotency-Key")
             .WithMethods("GET", "POST", "DELETE")
+            .WithExposedHeaders("Location", "Idempotent-Replayed") // let browser JS read these response headers
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));
         // No AllowCredentials(): the frontend sends the JWT in the Authorization header, not cookies.
     }
