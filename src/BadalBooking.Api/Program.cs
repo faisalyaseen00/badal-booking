@@ -5,6 +5,7 @@ using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
 using BadalBooking.Api.Features.Bookings;
 using BadalBooking.Api.Features.Devices;
+using BadalBooking.Api.Features.Health;
 using BadalBooking.Api.Features.PerformerApplications;
 using BadalBooking.Api.Features.Payments;
 using BadalBooking.Api.Features.Performers;
@@ -152,15 +153,33 @@ app.UseAuthorization();      // applies RequireAuthorization / policies
 app.UseRateLimiter();
 
 // ---------- Endpoints ----------
-// Simple liveness check: proves the API process is up.
-// (The real /health endpoint that also checks the database comes in step 3.1.)
+// /ping proves the process is up; /health also checks the database.
 app.MapGet("/ping", () => Results.Ok(new { status = "ok" }));
+app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapBookingEndpoints();
 app.MapPaymentEndpoints();
 app.MapPerformerEndpoints();
 app.MapDeviceEndpoints();
 app.MapPerformerApplicationEndpoints();
+
+// ---------- Database migrations on startup ----------
+// Every deploy brings the database schema up to date BEFORE the API serves requests or the
+// background workers start. EF Core takes a database lock while migrating, so two instances
+// starting together can't both run the same migration. If a migration fails, startup fails,
+// and Render keeps the previous version running instead of serving a half-migrated app.
+// (Found the need for this in step 2.10: a not-yet-migrated database crashed the API.)
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+    if (pending.Count > 0)
+    {
+        app.Logger.LogInformation("Applying {Count} database migration(s): {Names}", pending.Count, string.Join(", ", pending));
+        await db.Database.MigrateAsync();
+    }
+}
 
 // Create the admin (and optional demo performer) if they don't exist yet. Neither can self-register.
 await AccountSeeder.SeedAsync(app.Services);

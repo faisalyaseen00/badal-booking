@@ -1,0 +1,14 @@
+# Keep the build context small and secret-free.
+.git
+.github
+.env
+.env.*
+!.env.example
+*service-account*.json
+*firebase-adminsdk*.json
+**/bin
+**/obj
+web
+tests
+node_modules
+*.md
