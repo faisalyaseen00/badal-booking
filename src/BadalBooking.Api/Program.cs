@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using BadalBooking.Api.Data;
 using BadalBooking.Api.Domain;
 using BadalBooking.Api.Features.Auth;
+using BadalBooking.Api.Features.Bookings;
 using BadalBooking.Api.Infrastructure;
 using BadalBooking.Api.Infrastructure.Auth;
 using BadalBooking.Api.Infrastructure.Hosting;
@@ -108,6 +109,7 @@ app.UseRateLimiter();
 // (The real /health endpoint that also checks the database comes in step 3.1.)
 app.MapGet("/ping", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
+app.MapBookingEndpoints();
 
 app.Run();
 
